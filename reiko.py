@@ -1,3 +1,14 @@
+import sys
+import subprocess
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QTableWidget, QTableWidgetItem,
+    QVBoxLayout, QHBoxLayout, QWidget, QHeaderView, QAbstractItemView,
+    QPushButton, QMessageBox, QLabel
+)
+
 softwarelist = [
     ["gnome-screenshot", "screenshot application for GNOME", "https://wiki.gnome.org/Apps/Attic/GnomeUtils"],
     ["flameshot", "Powerful yet simple-to-use screenshot software", "https://flameshot.org"],
@@ -116,11 +127,7 @@ softwarelist = [
     ["transmission", "lightweight BitTorrent client", "https://transmissionbt.com/"],
     ["pitivi", "non-linear audio/video editor using GStreamer", "https://www.pitivi.org"],
     ["freetuxtv", "Internet television and radio player", "https://github.com/freetuxtv/freetuxtv"],
-
     ["webhttrack", "Copy websites to your computer, httrack with a Web interface", "https://www.httrack.com/"],
-    ["gnome-nettool", "network information tool for GNOME", "https://gitlab.gnome.org/GNOME/gnome-nettool"],
-    ["wireshark", "network traffic analyzer - graphical interface", "https://www.wireshark.org/"],
-    ["zenmap", "The Network Mapper Front End", "https://nmap.org/"],
 
     ["aisleriot", "GNOME solitaire card game collection", "https://wiki.gnome.org/Apps/Aisleriot"],
     ["gnome-mahjongg", "classic Eastern tile game for GNOME", "https://wiki.gnome.org/Apps/Mahjongg"],
@@ -133,3 +140,267 @@ softwarelist = [
     ["alien-arena", "Standalone 3D first person online deathmatch shooter", "https://martianbackup.com"],
     ["nexuiz", "Fast-paced 3D first-person shooter", "https://www.alientrap.com/games/nexuiz/"]
 ]
+
+INSTALLED_TEXT, NOT_INSTALLED_TEXT, INSTALL_TEXT, REMOVE_TEXT = "yes", "no", "install", "remove"
+INSTALLED_COLOR, NOT_INSTALLED_COLOR, INSTALL_COLOR, REMOVE_COLOR = "#86be43", "#c86466", "#be6cc4", "#be6cc4"
+#6bb37c green
+#d76c77 red
+#3fa2f6 cyan
+def is_installed(package_name):
+    """Return True if dpkg reports the package as installed."""
+    try:
+        result = subprocess.run(
+            ["dpkg-query", "-W", "-f=${Status}", package_name],
+            capture_output=True, text=True
+        )
+        return result.returncode == 0 and "install ok installed" in result.stdout
+    except FileNotFoundError:
+        return False  # dpkg-query not available (non-Debian system)
+
+
+# Store the installed boolean in softwarelist[i][3]
+for item in softwarelist:
+    installed = is_installed(item[0])
+    if len(item) > 3:
+        item[3] = installed
+    else:
+        item.append(installed)
+
+
+class PackageTable(QTableWidget):
+    """Table that emits toggle_requested when Enter or Space is pressed."""
+
+    toggle_requested = pyqtSignal(int)
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
+            row = self.currentRow()
+            if row >= 0:
+                self.toggle_requested.emit(row)
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
+class Reiko(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("reiko")
+        self.resize(700, 445)
+        self.setStyleSheet("""
+            QMainWindow, QWidget#central {
+                background-color: #161616;
+            }
+            QTableWidget {
+                background-color: #000000;
+                color: #fecd00;
+                border: none;
+                gridline-color: #000000;
+                selection-background-color: #3a1e3c;
+                /*selection-color: #ffffff;*/
+                outline: 0;
+                border-bottom: 1px solid #004d66;
+            }
+            QTableWidget::item {
+                padding: 4px;
+                border: none;
+            }
+            QHeaderView::section {
+                background-color: #222222;
+                color: #eeeeee;
+                border: none;
+                border-bottom: 1px solid #004d66;
+                padding: 4px;
+                font-weight: normal;
+            }
+            QTableCornerButton::section {
+                background-color: #040404;
+                border: none;
+            }
+            QLabel {
+                color: #eeeeee;
+            }
+            QPushButton {
+                color: #eeeeee;
+                padding: 3px 6px;
+                margin: 1px 2px 1px 2px;
+                background-color: #184b25;
+                border: 1px solid #6bb37c;
+            }
+            QPushButton:hover {
+                /*background-color: #27422e;
+                border: 1px solid #3fa2f6;*/
+            }
+            QPushButton:pressed {
+                margin: 2px 2px 0px 2px;
+            }
+            QPushButton:disabled {
+                background-color: #000000;
+                color: #000000;
+                border: 1px solid #000000;
+            }
+        """)
+
+        central = QWidget()
+        central.setObjectName("central")
+        self.setCentralWidget(central)
+
+        layout = QVBoxLayout(central)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.table = PackageTable()
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["installed", "title", "description", "homepage"])
+        self.table.horizontalHeader().setVisible(True)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        list_header = self.table.horizontalHeader()
+        list_header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+        list_header.setStretchLastSection(True)
+        list_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        list_header.resizeSection(0, 80)
+        list_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        list_header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        list_header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+
+        self.table.toggle_requested.connect(self.toggle_row)
+        self.table.itemDoubleClicked.connect(lambda item: self.toggle_row(item.row()))
+
+        bottom = QHBoxLayout()
+        bottom.setContentsMargins(15, 0, 6, 6)
+        #bottom.setSpacing(3)
+
+        self.counter_label = QLabel()
+        self.counter_label.setFixedHeight(24)
+
+        self.apply_button = QPushButton("Apply changes")
+        self.apply_button.setFixedHeight(24)
+        self.apply_button.setEnabled(False)
+        self.apply_button.clicked.connect(self.apply_changes)
+
+        bottom.addWidget(self.counter_label)
+        bottom.addStretch()
+        bottom.addWidget(self.apply_button)
+
+        layout.addWidget(self.table)
+        layout.addLayout(bottom)
+
+        self.fill_table()
+        self.table.setFocus()
+        self.table.selectRow(0)
+        self.table.setCurrentCell(0, 1)
+
+    def fill_table(self):
+        self.table.blockSignals(True)
+        self.table.setRowCount(len(softwarelist))
+
+        for row, item in enumerate(softwarelist):
+            state_item = QTableWidgetItem(INSTALLED_TEXT if item[3] else NOT_INSTALLED_TEXT)
+            if item[3]:
+                state_item.setForeground(QColor(INSTALLED_COLOR))
+            else:
+                state_item.setForeground(QColor(NOT_INSTALLED_COLOR))
+
+            state_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            state_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+
+            name_item = QTableWidgetItem(item[0])
+            name_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            name_item.setForeground(QColor("#f8f8f8"))
+
+            desc_item = QTableWidgetItem(item[1])
+            desc_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+
+            link_item = QTableWidgetItem(item[2])
+            link_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            link_item.setForeground(QColor("#19b9ed"))
+
+            self.table.setItem(row, 0, state_item)
+            self.table.setItem(row, 1, name_item)
+            self.table.setItem(row, 2, desc_item)
+            self.table.setItem(row, 3, link_item)
+
+        self.table.blockSignals(False)
+
+    def toggle_row(self, row):
+        state_item = self.table.item(row, 0)
+        if state_item.text() == INSTALLED_TEXT or state_item.text() == NOT_INSTALLED_TEXT:
+            if softwarelist[row][3]:
+                state_item.setText(REMOVE_TEXT)
+                color = REMOVE_COLOR
+            else:
+                state_item.setText(INSTALL_TEXT)
+                color = INSTALL_COLOR
+        else:
+            if softwarelist[row][3]:
+                state_item.setText(INSTALLED_TEXT)
+                color = INSTALLED_COLOR
+            else:
+                state_item.setText(NOT_INSTALLED_TEXT)
+                color = NOT_INSTALLED_COLOR
+        state_item.setForeground(QColor(color))
+      
+        """
+        for col in range(self.columnCount()):
+            cell = self.item(item.row(), col)
+            if cell is not None:
+                cell.setForeground(QColor("#00ddff"))
+        """
+
+        to_install = 0
+        to_remove = 0
+        for row in range(self.table.rowCount()):
+            marker = self.table.item(row, 0).text()
+            if marker == INSTALL_TEXT:
+                to_install += 1
+            elif marker == REMOVE_TEXT:
+                to_remove += 1
+        if to_install > 0 or to_remove > 0:
+            self.counter_label.setText(f"install: {to_install}, remove: {to_remove}")
+        else:
+            self.counter_label.setText("")
+        self.apply_button.setEnabled(to_install > 0 or to_remove > 0)
+
+    def apply_changes(self):
+        to_install = [
+            softwarelist[row][0]
+            for row in range(self.table.rowCount())
+            if self.table.item(row, 0).text() == INSTALL_TEXT
+        ]
+        to_remove = [
+            softwarelist[row][0]
+            for row in range(self.table.rowCount())
+            if self.table.item(row, 0).text() == REMOVE_TEXT
+        ]
+
+        if not to_install and not to_remove:
+            return
+
+        try:
+            if to_install:
+                subprocess.run(["sudo", "apt", "install", "-y", *to_install], check=True)
+            if to_remove:
+                subprocess.run(["sudo", "apt", "remove", "-y", *to_remove], check=True)
+        except subprocess.CalledProcessError as error:
+            QMessageBox.critical(self, "Error", f"apt failed: {error}")
+
+        # Re-check the real state of every package and redraw the table
+        current_row = self.table.currentRow()
+        for item in softwarelist:
+            item[3] = is_installed(item[0])
+        self.fill_table()
+        self.table.setCurrentCell(max(current_row, 0), 1)
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = Reiko()
+    window.show()
+    sys.exit(app.exec())

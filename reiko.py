@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QWidget, QHeaderView, QAbstractItemView,
     QPushButton, QMessageBox, QLabel
 )
+print("reiko is launching and checking for installed apps for about 5-10 seconds")
 
 softwarelist = [
     ["gnome-screenshot", "screenshot application for GNOME", "https://wiki.gnome.org/Apps/Attic/GnomeUtils"],
@@ -401,7 +402,6 @@ class Reiko(QMainWindow):
 
 
 if __name__ == "__main__":
-    print("reiko is launching and checking for installed apps for about 5-10 seconds")
     app = QApplication(sys.argv)
     window = Reiko()
     window.show()

@@ -143,9 +143,8 @@ softwarelist = [
 
 INSTALLED_TEXT, NOT_INSTALLED_TEXT, INSTALL_TEXT, REMOVE_TEXT = "yes", "no", "install", "remove"
 INSTALLED_COLOR, NOT_INSTALLED_COLOR, INSTALL_COLOR, REMOVE_COLOR = "#86be43", "#c86466", "#be6cc4", "#be6cc4"
-#6bb37c green
-#d76c77 red
-#3fa2f6 cyan
+
+
 def is_installed(package_name):
     """Return True if dpkg reports the package as installed."""
     try:
@@ -214,7 +213,7 @@ class Reiko(QMainWindow):
                 font-weight: normal;
             }
             QTableCornerButton::section {
-                background-color: #040404;
+                background-color: #040503;
                 border: none;
             }
             QLabel {
@@ -235,9 +234,9 @@ class Reiko(QMainWindow):
                 margin: 2px 2px 0px 2px;
             }
             QPushButton:disabled {
-                background-color: #000000;
-                color: #000000;
-                border: 1px solid #000000;
+                background-color: #161616;
+                color: #161616;
+                border: 1px solid #161616;
             }
         """)
 
@@ -385,11 +384,13 @@ class Reiko(QMainWindow):
 
         try:
             if to_install:
-                subprocess.run(["sudo", "apt", "install", "-y", *to_install], check=True)
+                subprocess.run(["sudo", "apt", "install", *to_install, "-y"], check=True)
             if to_remove:
-                subprocess.run(["sudo", "apt", "remove", "-y", *to_remove], check=True)
+                subprocess.run(["sudo", "apt", "remove", *to_remove, "-y"], check=True)
         except subprocess.CalledProcessError as error:
             QMessageBox.critical(self, "Error", f"apt failed: {error}")
+        print("")
+        print("The setup process has finished")
 
         # Re-check the real state of every package and redraw the table
         current_row = self.table.currentRow()
@@ -400,6 +401,7 @@ class Reiko(QMainWindow):
 
 
 if __name__ == "__main__":
+    print("reiko is launching and checking for installed apps for about 5-10 seconds")
     app = QApplication(sys.argv)
     window = Reiko()
     window.show()

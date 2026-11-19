@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QWidget, QHeaderView, QAbstractItemView,
     QPushButton, QMessageBox, QLabel
 )
-print("reiko is launching and checking for installed apps for about 5-10 seconds")
+print("reiko is launching and checking for installed apps for about 10 seconds")
 
 softwarelist = [
     ["gnome-screenshot", "screenshot application for GNOME", "https://wiki.gnome.org/Apps/Attic/GnomeUtils"],

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=reiko package manager
+Exec=/home/username/.local/reiko
+Icon=/home/username/.local/reiko48.png
+Description=Please specify the paths manually. 
+Type=Application
+Categories=Utility
+Terminal=true
